@@ -11,3 +11,13 @@ class Parameters:
     
     def get_combination_number(self):
         return np.prod(np.array([np.array(self.__dict__[key]).size for key in self.__dict__.keys()-{'code'}]))
+    
+    def get_all_combinations(self):
+        return None
+    
+    
+class ParameterSet:
+    def __init__(self, code, **kwargs):
+        self.code = code
+        self.__dict__.update(kwargs)
+    
