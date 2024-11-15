@@ -4,12 +4,13 @@ import copy
 class Suite:
     
     
-    def __init__(self, theory_parameters, meta_parameters, control_parameters, export_directory, debug=True):
+    def __init__(self, theory_parameters, meta_parameters, control_parameters, export_directory, do_debug=True):
         self.theory_parameters = theory_parameters # code, beta_functions, fixed_point, true_result, linear_generating_function, M
-        self.meta_parameters = meta_parameters # code, collocation_point_numbers, collocation_point_bounds, basis_functions, basis_functions_derivatives, fix_parameters, population_size, algorithm
+        self.meta_parameters = meta_parameters # code, collocation_point_numbers, collocation_point_bounds, basis_functions, basis_functions_derivatives, do_fix_parameters, population_size, algorithm
         self.control_parameters = control_parameters # code, fitness_function, selection, mutation, crossover, iteration_cap
         self.export_directory = export_directory
-        self.N = self.theory_parameters.fixed_point.size()
+        self.do_debug = do_debug
+        self.N = self.theory_parameters.fixed_point.size
         self.Tm = self.meta_parameters.get_combination_number()
         self.Tc = self.control_parameters.get_combination_number()
         self.Tt = self.Tm * self.Tc
@@ -20,21 +21,48 @@ class Suite:
         
     def run_all(self):
         for meta_parameter_set in self.meta_parameters.get_all_combinations():
-            collocation_points, grid = generate_grid()
-            N_p = collocation_points.size()
-            smoothness = calculate_smoothness()
-            F, dF, phi, dphi, beta = precalculate_tensors()
+            collocation_points, grid, core_ids = self.generate_grid(
+                self.theory_parameters.fixed_point, 
+                meta_parameter_set.collocation_point_numbers, 
+                meta_parameter_set.collocation_point_bounds)
+            
+            N_p = collocation_points.shape[0]
+            
+            smoothness = self.calculate_smoothness(
+                meta_parameter_set.collocation_point_numbers, 
+                meta_parameter_set.collocation_point_bounds)
+            
+            F_fp, psi, dpsi, beta = self.precalculate_tensors(
+                collocation_points, 
+                self.theory_parameters.linear_generating_function, 
+                meta_parameter_set.basis_functions, 
+                meta_parameter_set.basis_functions_derivatives, 
+                self.theory_parameters.beta_functions,
+                N_p, 
+                smoothness)
+            
             if meta_parameter_set.algorithm.has_population:
-                population = generate_starting_population(meta_parameter_set.population_size, N_p)
+                population = self.generate_starting_population(
+                    meta_parameter_set.population_size, 
+                    N_p, 
+                    meta_parameter_set.do_fix_parameters, 
+                    core_ids, 
+                    psi, 
+                    F_fp)
+                
             self.Cc = 1
+            
             for control_parameter_set in self.control_parameters.get_all_combinations():
-                debug(True, 1)
+                self.debug(True, 1)
+                
                 algorithm = copy.deepcopy(meta_parameter_set.algorithm)
                 algorithm.set_control_parameters(control_parameter_set)
                 algorithm.run()
                 algorithm.save_result(self.export_directory)
+                
                 self.Cc += 1
                 self.Ct += 1
+                
             self.Cm += 1
             
             
@@ -67,32 +95,37 @@ class Suite:
         
         grid = np.array([u,v])
 
-        points = np.vstack([u.ravel(order='F'), v.ravel(order='F')])
+        points = np.transpose(np.vstack([u.ravel(order='F'), v.ravel(order='F')]))
 
-        return points, grid
+        return points, grid, np.array([])
     
     
     def calculate_smoothness(self, collocation_point_numbers, collocation_point_bounds):
         return np.min(np.divide(collocation_point_bounds, collocation_point_numbers))
     
     
-    def precalculate_tensors(self):
-        return None, None, None, None, None
+    def precalculate_tensors(self, collocation_points, F_fp, psi, dpsi, beta, N_p, sigma):
+        dpsi(collocation_points, N_p, sigma, self.N, np.transpose(collocation_points), collocation_points)
+        return np.array([F_fp(cp) for cp in collocation_points]), psi(collocation_points, N_p, sigma, self.N, np.transpose(collocation_points)), dpsi(collocation_points, N_p, sigma, self.N, np.transpose(collocation_points), collocation_points), beta(collocation_points)
     
     
-    def generate_starting_population(self, population_size, N_p, fix_parameters):
-        population = np.random.rand(population_size, N_p, self.M)*2-1
-        if fix_parameters:
-            return np.array([fix_parameters(individual) for individual in population])
+    def generate_starting_population(self, population_size, N_p, do_fix_parameters, core_ids, psi, F_fp):
+        population = np.random.rand(population_size, N_p, self.theory_parameters.M)*2-1
+        if do_fix_parameters:
+            return np.array([self.fix_parameters(individual, core_ids, psi, F_fp) for individual in population])
         else:
             return population
         
         
-    def fix_parameters(self):
-        return None
+    def fix_parameters(self, parameters, core_ids, psi, F_fp):
+        pc = np.copy(parameters)
+        for k in range(0,core_ids.size):
+            kd = core_ids[k]
+            pc[k,:] = 1/psi[kd,k] * np.subtract(F_fp[kd], np.add(np.matmul(psi[kd,0:k], pc[0:k,:]), np.matmul(psi[kd,k+1:], pc[k+1:,:])))
+        return pc # p[ith basis function, function mu]
     
     
-    def debug(boolean, number):
+    def debug(self, boolean, number):
         if boolean:
             if number == 1:
                 print(f'Meta: {self.Cm}/{self.Tm} ({round(self.Cm/self.Tm*100,2)}%%); Control: {self.Cc}/{self.Tc} ({round(self.Cc/self.Tc*100,2)}%%); Total: {self.Ct}/{self.Tt} ({round(self.Ct/self.Tt*100,2)}%%);', end='\r')
