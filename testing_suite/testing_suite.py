@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+import time
 
 class Suite:
     
@@ -53,7 +54,9 @@ class Suite:
             self.Cc = 1
             
             for control_parameter_set in self.control_parameters.get_all_combinations():
+                self.debug(False, 2)
                 self.debug(True, 1)
+                time.sleep(1)
                 
                 algorithm = copy.deepcopy(meta_parameter_set.algorithm)
                 algorithm.set_control_parameters(control_parameter_set)
@@ -130,8 +133,12 @@ class Suite:
             if number == 1:
                 print(f'Meta: {self.Cm}/{self.Tm} ({round(self.Cm/self.Tm*100,2)}%%); Control: {self.Cc}/{self.Tc} ({round(self.Cc/self.Tc*100,2)}%%); Total: {self.Ct}/{self.Tt} ({round(self.Ct/self.Tt*100,2)}%%);', end='\r')
             elif number == 2:
-                print('2')
+                print(f'{list(meta_parameter_set.__dict__.values())} and {list(control_parameter_set.__dict__.values())}')
             else:
                 raise Exception('Unknown debug request.')
+                
+    
+    def get_combination_number(self):
+        return self.meta_parameters.get_combination_number() * self.control_parameters.get_combination_number()
                 
     

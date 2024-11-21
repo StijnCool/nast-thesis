@@ -1,28 +1,36 @@
 import numpy as np
+import itertools
 
 class Parameters:
+    
     
     def __init__(self, code, **kwargs):
         self.code = code
         self.__dict__.update(kwargs)
     
+    
     def get_option_counts(self):
-        return {key: np.array(self.__dict__[key]).size for key in self.__dict__.keys()-{'code'}}
+        return {key: np.array(self.__dict__[key]).shape[0] for key in self.__dict__.keys()-{'code'}}
+    
     
     def get_combination_number(self):
-        return np.prod(np.array([np.array(self.__dict__[key]).size for key in self.__dict__.keys()-{'code'}]))
+        return np.prod(np.array([np.array(self.__dict__[key]).shape[0] for key in self.__dict__.keys()-{'code'}]))
+    
     
     def get_all_combinations(self):
-        subset = {'code': self.code}
-        for key in self.__dict__.keys()-{'code'}:
-            if isinstance(self.__dict__[key], np.ndarray):
-                subset[key] = self.__dict__[key][0]
-            else:
-                subset[key] = self.__dict__[key]
-        return np.array([ParameterSet(subset)])
+        permutations = np.array([])
+        uncoded_dict = {key: self.__dict__[key] for key in self.__dict__.keys()-{'code'}}
+        keys, values = zip(*uncoded_dict.items())
+        for sub_dict in [dict(zip(keys, v)) for v in itertools.product(*values)]:
+            sub_set = sub_dict 
+            sub_set['code'] = self.code
+            permutations = np.append(permutations, [ParameterSet(sub_dict)])
+        return permutations
     
     
 class ParameterSet:
+    
+    
     def __init__(self, content):
         self.__dict__.update(content)
     
