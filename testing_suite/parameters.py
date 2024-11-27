@@ -23,9 +23,12 @@ class Parameters:
         keys, values = zip(*uncoded_dict.items())
         for sub_dict in [dict(zip(keys, v)) for v in itertools.product(*values)]:
             sub_set = sub_dict 
-            sub_set['code'] = self.code
+            sub_set['parameter_code'] = self.code
             permutations = np.append(permutations, [ParameterSet(sub_dict)])
         return permutations
+
+    
+# --------------------------------------------------------------------------------------------------------------------------
     
     
 class ParameterSet:

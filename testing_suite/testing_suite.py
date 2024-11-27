@@ -42,6 +42,7 @@ class Suite:
                 N_p, 
                 smoothness)
             
+            population = None
             if meta_parameter_set.algorithm.has_population:
                 population = self.generate_starting_population(
                     meta_parameter_set.population_size, 
@@ -59,9 +60,9 @@ class Suite:
                 time.sleep(1)
                 
                 algorithm = copy.deepcopy(meta_parameter_set.algorithm)
-                algorithm.set_control_parameters(control_parameter_set)
-                algorithm.run()
-                algorithm.save_result(self.export_directory)
+                # algorithm.set_control_parameters(control_parameter_set, population)
+                # algorithm.run()
+                # algorithm.save_result(self.export_directory)
                 
                 self.Cc += 1
                 self.Ct += 1
