@@ -10,12 +10,11 @@ from scipy.optimize import curve_fit
 
 
 def beta(G): # G[j'th point, nth coord]
-    return np.transpose(
-        np.array(
-            [
-                2*G[:,0] - 3*G[:,0]**3 / (2*math.pi*(G[:,1] + G[:,0])**3), -G[:,0]**2*(7*G[:,1] + G[:,0]) / (4*math.pi*(G[:,1] + G[:,0])**3)
-            ]
-        )
+    return np.array(
+        [
+            2*G[:,0] - 3*G[:,0]**3 / (2*math.pi*(G[:,1] + G[:,0])**3), 
+            -G[:,0]**2*(7*G[:,1] + G[:,0]) / (4*math.pi*(G[:,1] + G[:,0])**3)
+        ]
     ) # beta[jth point, nth function] [!] this line is specifically 2D
 
 

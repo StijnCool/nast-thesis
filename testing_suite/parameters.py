@@ -1,5 +1,6 @@
 import numpy as np
 import itertools
+import random as rand
 
 class Parameters:
     

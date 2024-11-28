@@ -18,6 +18,7 @@ class Suite:
         self.Cc = 1
         self.Cm = 1
         self.Ct = 1
+        self.temp = []
         
         
     def run_all(self):
@@ -60,17 +61,19 @@ class Suite:
                 time.sleep(1)
                 
                 algorithm = copy.deepcopy(meta_parameter_set.algorithm)
-                # algorithm.set_control_parameters(control_parameter_set, population)
-                # algorithm.run()
+                algorithm.set_control_parameters(control_parameter_set, population, beta, dpsi)
+                self.temp.append(algorithm.run())
                 # algorithm.save_result(self.export_directory)
                 
                 self.Cc += 1
                 self.Ct += 1
                 
             self.Cm += 1
+        print('')
             
             
     def run_batch(self, batch_sizes):
+        return (np.array(self.temp))
         return None
             
         
@@ -132,7 +135,7 @@ class Suite:
     def debug(self, boolean, number):
         if boolean:
             if number == 1:
-                print(f'Meta: {self.Cm}/{self.Tm} ({round(self.Cm/self.Tm*100,2)}%%); Control: {self.Cc}/{self.Tc} ({round(self.Cc/self.Tc*100,2)}%%); Total: {self.Ct}/{self.Tt} ({round(self.Ct/self.Tt*100,2)}%%);', end='\r')
+                print(f'Meta: {self.Cm-1}/{self.Tm} ({round((self.Cm-1)/self.Tm*100,2)}%%); Control: {self.Cc-1}/{self.Tc} ({round((self.Cc-1)/self.Tc*100,2)}%%); Total: {self.Ct-1}/{self.Tt} ({round((self.Ct-1)/self.Tt*100,2)}%%);', end='\r')
             elif number == 2:
                 print(f'{list(meta_parameter_set.__dict__.values())} and {list(control_parameter_set.__dict__.values())}')
             else:
