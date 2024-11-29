@@ -64,23 +64,35 @@ class GeneticAlgorithm(Algorithm):
         }
         self.counter = 1
         self.fitness()
-        start = timer()
+        self.start = np.zeros(6)
+        self.end = np.zeros(6)
+        self.start[0] = timer()
         while self.counter <= self.iteration_cap:
             self.iterate()
             self.result['best_score'].append(np.min(self.scores))
             self.counter += 1
-        end = timer()
-        print(f'dt = {end-start}')
+        self.end[0] = timer()
+        print(f'dt[t,s,m,sh,c,f] = {self.end-self.start}')
         return self.result['best_score']
         
         
     def iterate(self):
+        self.start[1] = timer()
         self.selection()
+        self.end[1] = timer()
+        self.start[2] = timer()
         self.mutation()
+        self.end[2] = timer()
+        self.start[3] = timer()
         self.shuffle_pop()
+        self.end[3] = timer()
+        self.start[4] = timer()
         for i in range(0,self.pop_size,2):
             self.pop[i], self.pop[i+1] = self.crossover(self.pop[i], self.pop[i+1])
+        self.end[4] = timer()
+        self.start[5] = timer()
         self.fitness()
+        self.end[5] = timer()
     
     
     def shuffle_pop(self):
