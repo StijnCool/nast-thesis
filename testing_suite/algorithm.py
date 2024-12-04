@@ -3,6 +3,7 @@ import math
 import random as rand
 from timeit import default_timer as timer
 import copy
+import pandas as pd
 
 class Algorithm:
     
@@ -14,6 +15,7 @@ class Algorithm:
         
         
     def set_control_parameters(self, control_parameter_set, pc_beta, pc_dpsi):
+        self.raw_parameters = control_parameter_set
         self.__dict__.update(control_parameter_set.__dict__)
         
         
@@ -21,12 +23,18 @@ class Algorithm:
         raise NotImplementedError('Subclasses should implement.')
         
     
-    def save_result(self, directory):
-        raise NotImplementedError('Subclasses should implement.')
+    def save_result(self, directory, identifier, meta):
+        self.identifier = identifier
+        self.meta = meta
+        df = pd.DataFrame.from_dict(self.result)
+        # df.to_csv(directory + "\\" + "test" + ".csv")
+        df.to_csv(directory + "\\" + self.generate_filename() + ".csv")
+        return None
     
     
     def generate_filename(self):
-        raise NotImplementedError('Subclasses should implement.')
+        name = self.identifier + "___" + self.meta.__str__() + "___" + self.raw_parameters.__str__()
+        return name.replace(',','_').replace('.','_')
 
 
 # --------------------------------------------------------------------------------------------------------------------------
@@ -47,6 +55,7 @@ class GeneticAlgorithm(Algorithm):
     
     
     def set_control_parameters(self, control_parameter_set, population, beta, dpsi):
+        self.raw_parameters = control_parameter_set
         self.__dict__.update(control_parameter_set.__dict__)
         self.pop = population
         self.beta = beta
@@ -62,35 +71,37 @@ class GeneticAlgorithm(Algorithm):
     def run(self):
         pop = copy.deepcopy(self.pop)
         self.result = {
-            'best_score': []
+            'min_score' : [],
+            'mean_score' : [],
+            'std_score' : [],
+            'max_score' : [],
+            'timer_main' : [],
+            'timer_iter' : [],
+            'best_p': []
         }
         counter = 1
         scores = self.fitness(pop)
-        start = np.zeros(6)
-        end = np.zeros(6)
-        start[0] = timer()
         while counter <= self.iteration_cap:
-            start[1] = timer()
+            timer_iter = timer()
+            timer_main = []
+            timer_main.append(timer())
             pop, scores = self.selection(pop, scores)
-            end[1] = timer()
-            start[2] = timer()
+            timer_main.append(timer())
             pop = self.mutation(pop, scores)
-            end[2] = timer()
-            start[3] = timer()
+            timer_main.append(timer())
             pop = self.shuffle_pop(pop)
-            end[3] = timer()
-            start[4] = timer()
+            timer_main.append(timer())
             for i in range(0,self.pop_size,2):
                 pop[i], pop[i+1] = self.crossover(pop[i], pop[i+1])
-            end[4] = timer()
-            start[5] = timer()
+            timer_main.append(timer())
             scores = self.fitness(pop)
-            end[5] = timer()
-            self.result['best_score'].append(np.min(scores))
+            timer_main.append(timer())
             counter += 1
-        end[0] = timer()
-        print(f'dt[t,s,m,sh,c,f] = {end-start}')
-        return self.result['best_score']
+            
+            timer_main = np.array(timer_main)
+            self.result['timer_main'].append(timer_main[1:]-timer_main[:-1])
+            self.result['timer_iter'].append(timer()-timer_iter)
+        return self.result
     
     
     def shuffle_pop(self, pop):
@@ -99,13 +110,18 @@ class GeneticAlgorithm(Algorithm):
         
 
     def f_abs(self, pop):
-        return np.array([min(10.0**100, np.sum(np.abs(np.trace(np.matmul(self.beta, np.transpose(np.matmul(self.dpsi, p), axes=[2,0,1])), axis1=1, axis2=2)))) for p in pop], dtype=np.float32)
+        return np.array([min(10.0**35, np.sum(np.abs(np.trace(np.matmul(self.beta, np.transpose(np.matmul(self.dpsi, p), axes=[2,0,1])), axis1=1, axis2=2)))) for p in pop], dtype=np.float32)
     
         
     def s_roulette(self, pop, scores):
         weights = np.max(np.abs(scores)) - np.abs(scores)
         pop = pop[scores.argsort()[::-1]] # sorts in descending order of scores i.e. best is at bottom of pop
         scores = scores[scores.argsort()[::-1]]
+        self.result['min_score'].append(scores[-1])
+        self.result['mean_score'].append(np.mean(scores))
+        self.result['std_score'].append(np.std(scores))
+        self.result['max_score'].append(scores[0])
+        self.result['best_p'].append(pop[-1])
         order = np.arange(0, self.pop_size, 1)
         replacement_mask = None
         if self.keep_number > 0:

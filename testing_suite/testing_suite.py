@@ -70,7 +70,7 @@ class Suite:
                 algorithm = copy.deepcopy(meta_parameter_set.algorithm)
                 algorithm.set_control_parameters(control_parameter_set, population, beta, dpsi)
                 self.temp.append(algorithm.run())
-                # algorithm.save_result(self.export_directory)
+                algorithm.save_result(self.export_directory, self.theory_parameters.identifier, control_parameter_set)
                 
                 Cc += 1
                 Ct += 1

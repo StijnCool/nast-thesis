@@ -37,4 +37,11 @@ class ParameterSet:
     
     def __init__(self, content):
         self.__dict__.update(content)
+        
+      
+    def __str__(self):
+        printer = "PARAMETERS"
+        for k, v in self.__dict__.items():
+            printer = printer + "__" + k[:2] + "-" + str(v)
+        return printer
     
