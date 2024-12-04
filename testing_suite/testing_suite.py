@@ -22,6 +22,13 @@ class Suite:
         
         
     def run_all(self):
+        Tm = self.meta_parameters.get_combination_number()
+        Tc = self.control_parameters.get_combination_number()
+        Tt = self.Tm * self.Tc
+        Cc = 1
+        Cm = 1
+        Ct = 1
+        
         for meta_parameter_set in self.meta_parameters.get_all_combinations():
             collocation_points, grid, core_ids = self.generate_grid(
                 self.theory_parameters.fixed_point, 
@@ -53,11 +60,11 @@ class Suite:
                     psi, 
                     F_fp)
                 
-            self.Cc = 1
+            Cc = 1
             
             for control_parameter_set in self.control_parameters.get_all_combinations():
                 self.debug(False, 2)
-                self.debug(True, 1)
+                self.debug(True, 1, Tm=Tm, Tc=Tc, Tt=Tt, Cc=Cc, Cm=Cm, Ct=Ct)
                 time.sleep(1)
                 
                 algorithm = copy.deepcopy(meta_parameter_set.algorithm)
@@ -65,10 +72,10 @@ class Suite:
                 self.temp.append(algorithm.run())
                 # algorithm.save_result(self.export_directory)
                 
-                self.Cc += 1
-                self.Ct += 1
+                Cc += 1
+                Ct += 1
                 
-            self.Cm += 1
+            Cm += 1
         print('')
             
             
@@ -100,11 +107,11 @@ class Suite:
         u = np.concatenate((u_vm, u_vp), axis=1)
         v = np.concatenate((v_vm, v_vp), axis=1)
         
-        grid = np.array([u,v])
+        grid = np.array([u,v], dtype=np.float32)
 
         points = np.transpose(np.vstack([u.ravel(order='F'), v.ravel(order='F')]))
 
-        return points, grid, np.array([])
+        return points, grid, np.array([], dtype=np.float32)
     
     
     def calculate_smoothness(self, collocation_point_numbers, collocation_point_bounds):
@@ -113,13 +120,13 @@ class Suite:
     
     def precalculate_tensors(self, collocation_points, F_fp, psi, dpsi, beta, N_p, sigma):
         dpsi(collocation_points, N_p, sigma, self.N, np.transpose(collocation_points), collocation_points)
-        return np.array([F_fp(cp) for cp in collocation_points]), psi(collocation_points, N_p, sigma, self.N, np.transpose(collocation_points)), dpsi(collocation_points, N_p, sigma, self.N, np.transpose(collocation_points), collocation_points), beta(collocation_points)
+        return np.array([F_fp(cp) for cp in collocation_points], dtype=np.float32), psi(collocation_points, N_p, sigma, self.N, np.transpose(collocation_points)), dpsi(collocation_points, N_p, sigma, self.N, np.transpose(collocation_points), collocation_points), beta(collocation_points)
     
     
     def generate_starting_population(self, population_size, N_p, do_fix_parameters, core_ids, psi, F_fp):
         population = np.random.rand(population_size, N_p, self.theory_parameters.M)*2-1
         if do_fix_parameters:
-            return np.array([self.fix_parameters(individual, core_ids, psi, F_fp) for individual in population])
+            return np.array([self.fix_parameters(individual, core_ids, psi, F_fp) for individual in population], dtype=np.float32)
         else:
             return population
         
@@ -132,12 +139,12 @@ class Suite:
         return pc # p[ith basis function, function mu]
     
     
-    def debug(self, boolean, number):
+    def debug(self, boolean, number, **counters):
         if boolean:
             if number == 1:
-                print(f'Meta: {self.Cm-1}/{self.Tm} ({round((self.Cm-1)/self.Tm*100,2)}%%); Control: {self.Cc-1}/{self.Tc} ({round((self.Cc-1)/self.Tc*100,2)}%%); Total: {self.Ct-1}/{self.Tt} ({round((self.Ct-1)/self.Tt*100,2)}%%);', end='\r')
+                print(f"Meta: {counters['Cm']-1}/{counters['Tm']} ({round((counters['Cm']-1)/counters['Tm']*100,2)}%%); Control: {counters['Cc']-1}/{counters['Tc']} ({round((counters['Cc']-1)/counters['Tc']*100,2)}%%); Total: {counters['Ct']-1}/{counters['Tt']} ({round((counters['Ct']-1)/counters['Tt']*100,2)}%%);", end='\r')
             elif number == 2:
-                print(f'{list(meta_parameter_set.__dict__.values())} and {list(control_parameter_set.__dict__.values())}')
+                print(f"{list(meta_parameter_set.__dict__.values())} and {list(control_parameter_set.__dict__.values())}")
             else:
                 raise Exception('Unknown debug request.')
                 

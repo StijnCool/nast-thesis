@@ -15,7 +15,7 @@ def beta(G): # G[j'th point, nth coord]
             2*G[:,0] - 3*G[:,0]**3 / (2*math.pi*(G[:,1] + G[:,0])**3), 
             -G[:,0]**2*(7*G[:,1] + G[:,0]) / (4*math.pi*(G[:,1] + G[:,0])**3)
         ]
-    ) # beta[jth point, nth function] [!] this line is specifically 2D
+    , dtype=np.float32) # beta[jth point, nth function] [!] this line is specifically 2D
 
 
 def F_fp(g): # Calculate c_fp[n',mu]*g[n'] (n' means (gn, 1))
@@ -25,7 +25,7 @@ def F_fp(g): # Calculate c_fp[n',mu]*g[n'] (n' means (gn, 1))
             [215 + 44*43**0.5], 
             [49*(1003*43**0.5 - 989)/(288*math.pi)]
         ]
-    ) # N+1 x N-M coefficients c_fp[n',mu] [!] this line is specifically 2D
+    , dtype=np.float32) # N+1 x N-M coefficients c_fp[n',mu] [!] this line is specifically 2D
     return np.matmul(
         np.append(g, [1]),
         c_fp
@@ -47,7 +47,7 @@ def psi(G, N_cp, sigma, N, CP_transpose): # G[j'th point, nth coord]
                 )
             ) for g in G
         ]
-    ) # psi[jth point,ith function]
+    , dtype=np.float32) # psi[jth point,ith function]
 
 
 def dpsi(G, N_cp, sigma, N, CP_transpose, CP): # G[j'th point, nth coord]
@@ -59,7 +59,7 @@ def dpsi(G, N_cp, sigma, N, CP_transpose, CP): # G[j'th point, nth coord]
                     (-2/sigma**2) * (np.tile(g, (N_cp,1)).transpose() - CP_transpose)
                 ) for g in G
             ]
-        ), 
+        , dtype=np.float32), 
         np.transpose(
             np.tile(np.square(psi(CP, N_cp, sigma, N, CP_transpose)),(N,1,1)), 
             axes=[1,0,2]
