@@ -28,9 +28,9 @@ class Algorithm:
         self.meta = meta
         df = pd.DataFrame.from_dict(self.result)
         for k, v in self.meta.__dict__.items():
-            df['MP_'+k] = v
+            df['MP_'+k] = str(v)
         for k, v in self.raw_parameters.__dict__.items():
-            df['CP_'+k] = v
+            df['CP_'+k] = str(v)
         # df.to_csv(directory + "\\" + "test" + ".csv")
         df.to_csv(directory + "\\" + self.generate_filename() + ".csv")
         return None
