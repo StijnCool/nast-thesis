@@ -27,13 +27,17 @@ class Algorithm:
         self.identifier = identifier
         self.meta = meta
         df = pd.DataFrame.from_dict(self.result)
+        for k, v in self.meta.__dict__.items():
+            df['MP_'+k] = v
+        for k, v in self.raw_parameters.__dict__.items():
+            df['CP_'+k] = v
         # df.to_csv(directory + "\\" + "test" + ".csv")
         df.to_csv(directory + "\\" + self.generate_filename() + ".csv")
         return None
     
     
     def generate_filename(self):
-        name = self.identifier + "___" + self.meta.__str__() + "___" + self.raw_parameters.__str__()
+        name = self.identifier + "__" + self.meta.__str__() + "__" + self.raw_parameters.__str__()
         return name.replace(',','_').replace('.','_')
 
 
@@ -77,10 +81,14 @@ class GeneticAlgorithm(Algorithm):
             'max_score' : [],
             'timer_main' : [],
             'timer_iter' : [],
+            'timerest_iter' : [],
+            'elapsed_time' : [],
+            'delta_time' : [0],
             'best_p': []
         }
         counter = 1
         scores = self.fitness(pop)
+        start_time = timer()
         while counter <= self.iteration_cap:
             timer_iter = timer()
             timer_main = []
@@ -101,6 +109,10 @@ class GeneticAlgorithm(Algorithm):
             timer_main = np.array(timer_main)
             self.result['timer_main'].append(timer_main[1:]-timer_main[:-1])
             self.result['timer_iter'].append(timer()-timer_iter)
+            self.result['timerest_iter'].append(self.result['timer_iter'][-1] - np.sum(self.result['timer_main'][-1]))
+            self.result['elapsed_time'].append(timer()-start_time)
+        self.result['delta_time'].extend(np.subtract(self.result['elapsed_time'][1:], self.result['elapsed_time'][:-1]))
+        self.result['delta_time'][0] = self.result['elapsed_time'][0]
         return self.result
     
     
@@ -110,7 +122,7 @@ class GeneticAlgorithm(Algorithm):
         
 
     def f_abs(self, pop):
-        return np.array([min(10.0**35, np.sum(np.abs(np.trace(np.matmul(self.beta, np.transpose(np.matmul(self.dpsi, p), axes=[2,0,1])), axis1=1, axis2=2)))) for p in pop], dtype=np.float32)
+        return np.array([min(10.0**30, np.sum(np.abs(np.trace(np.matmul(self.beta, np.transpose(np.matmul(self.dpsi, p), axes=[2,0,1])), axis1=1, axis2=2)))) for p in pop], dtype=np.float32)
     
         
     def s_roulette(self, pop, scores):
