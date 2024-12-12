@@ -65,3 +65,17 @@ def dpsi(G, N_cp, sigma, N, CP_transpose, CP): # G[j'th point, nth coord]
             axes=[1,0,2]
         )
     ) # dpsi[jth point, nth derivative,ith function]
+
+def F(p, pc_psi): # p[ith function, function mu]
+    val = np.matmul(pc_psi, p) # (j,i)x(i,mu)=(j,mu)
+    return np.subtract(val, val[fp_id,0]) # F[j'th point, function mu] [!] this line is specifically 2D
+
+def F_general(G, p, pc_psi, fp_id, N_cp, sigma, N, CP_transpose): # G[point, nth coord] p[ith function, function mu]
+    val = np.matmul(psi(G, N_cp, sigma, N, CP_transpose), p)
+    return np.subtract(val, np.matmul(pc_psi, p)[fp_id,0]) # F[j'th point, function mu] [!] this line is specifically 2D
+
+def findSolutionV2D(bound, number, p, pc_psi, fp_id, fp, N_cp, sigma, N, CP_transpose):
+    check_coords = np.zeros((number,2))
+    check_coords[:,1] = np.linspace(bound[0], bound[1], number)
+    check_F = np.square(F_general(check_coords,p,pc_psi,fp_id, N_cp, sigma, N, CP_transpose))
+    return check_coords[np.argmin(check_F[:,0]),1]
