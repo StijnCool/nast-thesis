@@ -29,7 +29,8 @@ class Suite:
         Cm = 1
         Ct = 1
         
-        for meta_parameter_set in self.meta_parameters.get_all_combinations():
+        all_combinations = self.meta_parameters.get_all_combinations()
+        for meta_parameter_set in all_combinations:
             collocation_points, grid, core_ids = self.generate_grid(
                 self.theory_parameters.fixed_point, 
                 meta_parameter_set.collocation_point_numbers, 
@@ -62,7 +63,8 @@ class Suite:
                 
             Cc = 1
             
-            for control_parameter_set in self.control_parameters.get_all_combinations():
+            all_control_combinations = self.control_parameters.get_all_combinations()
+            for control_parameter_set in all_control_combinations[354:]:
                 self.debug(False, 2)
                 self.debug(True, 1, Tm=Tm, Tc=Tc, Tt=Tt, Cc=Cc, Cm=Cm, Ct=Ct)
                 time.sleep(1)
@@ -70,10 +72,11 @@ class Suite:
                 algorithm = copy.deepcopy(meta_parameter_set.algorithm)
                 algorithm.set_control_parameters(control_parameter_set, population, beta, dpsi)
                 self.temp.append(algorithm.run())
-                algorithm.save_result(self.export_directory, self.theory_parameters.identifier, control_parameter_set)
+                algorithm.save_result(self.export_directory, self.theory_parameters.identifier, meta_parameter_set, Cm, Cc)
                 
                 Cc += 1
                 Ct += 1
+                del algorithm
                 
             Cm += 1
         print('')

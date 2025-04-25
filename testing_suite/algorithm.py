@@ -23,7 +23,7 @@ class Algorithm:
         raise NotImplementedError('Subclasses should implement.')
         
     
-    def save_result(self, directory, identifier, meta):
+    def save_result(self, directory, identifier, meta, meta_count, control_count):
         self.identifier = identifier
         self.meta = meta
         df = pd.DataFrame.from_dict(self.result)
@@ -32,7 +32,7 @@ class Algorithm:
         for k, v in self.raw_parameters.__dict__.items():
             df['CP_'+k] = str(v)
         # df.to_csv(directory + "\\" + "test" + ".csv")
-        df.to_csv(directory + "\\" + self.generate_filename() + ".csv")
+        df.to_csv(directory + "\\" + identifier + '_m' + str(meta_count+2) + 'c' + str(control_count+353) + ".csv")
         return None
     
     
