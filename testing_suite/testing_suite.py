@@ -64,7 +64,7 @@ class Suite:
             Cc = 1
             
             all_control_combinations = self.control_parameters.get_all_combinations()
-            for control_parameter_set in all_control_combinations[354:]:
+            for control_parameter_set in all_control_combinations:
                 self.debug(False, 2)
                 self.debug(True, 1, Tm=Tm, Tc=Tc, Tt=Tt, Cc=Cc, Cm=Cm, Ct=Ct)
                 time.sleep(1)

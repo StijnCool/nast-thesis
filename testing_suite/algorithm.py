@@ -32,7 +32,7 @@ class Algorithm:
         for k, v in self.raw_parameters.__dict__.items():
             df['CP_'+k] = str(v)
         # df.to_csv(directory + "\\" + "test" + ".csv")
-        df.to_csv(directory + "\\" + identifier + '_m' + str(meta_count+2) + 'c' + str(control_count+353) + ".csv")
+        df.to_json(directory + "\\" + identifier + '_m' + str(meta_count+2) + 'c' + str(control_count) + ".json", orient='records', indent=2)
         return None
     
     
