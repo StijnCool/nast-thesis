@@ -19,16 +19,22 @@ u0 = 343 / (288 * np.pi)
 v0 = -49 / (288 * np.pi)
 
 # Linear regime boundary condition parameters
-BC_RADIUS = 1e-3        # Radius around fixed point where linear BC is enforced
-BC_WEIGHT = 1e-4          # Weight for boundary condition loss term
+BC_RADIUS = 10**-2        # Radius around fixed point where linear BC is enforced
+BC_WEIGHT = 10**-4         # Weight for boundary condition loss term
+
+# DOF limiting parameters
+DOF_WEIGHT = 0
 
 # Neural network architecture
-HIDDEN_LAYERS = [50, 100, 200, 200, 100, 50]  # Neurons per hidden layer
+HIDDEN_LAYERS = [50, 100, 100, 50]  # Neurons per hidden layer
 ACTIVATION = nn.Tanh()    # Activation function
 
 # Training parameters
-LEARNING_RATE = 1e-5
-BATCH_SIZE = 100
+LEARNING_RATE = 1e-4
+# BATCH_SIZE = 100
+
+# Numerical offset to avoid singularities and zeros
+NUM_OFFSET = 1e-10
 
 """
 NEURAL NETWORK DEFINITION
@@ -63,18 +69,18 @@ PHYSICS FUNCTIONS
 """
 def beta_u(u, v):
     """Beta function for u coordinate"""
-    return 2 * u - (3 * u**3) / (2 * torch.pi * (v + u)**3) + 1e-30
+    return 2 * u - (3 * u**3) / (2 * torch.pi * (v + u)**3) + NUM_OFFSET
 
 def beta_v(u, v):
     """Beta function for v coordinate"""
-    return -(u**2 * (7 * v + u)) / (4 * torch.pi * (v + u)**3) + 1e-30
+    return -(u**2 * (7 * v + u)) / (4 * torch.pi * (v + u)**3) + NUM_OFFSET
 
 def F_star(u, v):
     """Linearized solution around fixed point (boundary condition)"""
     sqrt_43 = torch.sqrt(torch.tensor(43.0))
-    term1 = (172 - 137 * sqrt_43) * u
+    term1 = -(172 - 137 * sqrt_43) * u
     term2 = (44 * sqrt_43 + 215) * v
-    term3 = 49 * (1003 * sqrt_43 - 989) / (288 * torch.pi)
+    term3 = -49 * (305 * sqrt_43 - 473) / (96 * torch.pi)
     return term1 + term2 + term3
 
 """
@@ -92,20 +98,25 @@ def compute_loss(net, u, v, x_bc, epoch):
     x = torch.stack((u, v), dim=-1).requires_grad_(True)
     F = net(x)
     dF = torch.autograd.grad(F, x, create_graph=True, grad_outputs=torch.ones_like(F))[0]
-    residual = beta_u(u, v) * dF[:, 0] + beta_v(u, v) * dF[:, 1]
-    pde_loss = torch.mean(residual**2)
+    pde_residual = beta_u(u, v) * dF[:, 0] + beta_v(u, v) * dF[:, 1]
+    pde_loss = torch.mean(pde_residual**2)
     
     # Boundary condition loss (linear regime)
     F_bc_pred = net(x_bc)
     F_bc_true = F_star(x_bc[:, 0], x_bc[:, 1]).unsqueeze(-1)
     bc_loss = torch.mean((F_bc_pred - F_bc_true)**2)
     
-    true_bc_weight = BC_WEIGHT
-    true_pde_weight = 1 - true_bc_weight
+    # DOF loss at collocation points (force ||dF|| = 1)
+    dof_residual = (dF[:, 0]**2 + dF[:, 1]**2)**0.5 - 1
+    dof_loss = torch.mean(dof_residual**2)
     
-    return true_pde_weight * pde_loss + true_bc_weight * bc_loss
+    true_bc_weight = BC_WEIGHT
+    true_dof_weight = DOF_WEIGHT
+    true_pde_weight = 1 - true_bc_weight - true_dof_weight
+    
+    return true_pde_weight * pde_loss + true_bc_weight * bc_loss + true_dof_weight * dof_loss
 
-def train_model(EPOCHS, print_every):
+def train_model(EPOCHS, print_every, BATCH_SIZE):
     """Train the Physics-Informed Neural Network"""
     net = PINN()
     optimizer = torch.optim.Adam(net.parameters(), lr=LEARNING_RATE)
@@ -114,10 +125,14 @@ def train_model(EPOCHS, print_every):
     for epoch in range(EPOCHS):
         optimizer.zero_grad()
         
-        # Sample collocation points (avoid v = -u singularity)
+        # Sample collocation points (avoid v = -u singularity and u=0 and v=0)
         u = torch.rand(BATCH_SIZE, 1) * (U_RANGE[1] - U_RANGE[0]) + U_RANGE[0]
         v = torch.rand(BATCH_SIZE, 1) * (V_RANGE[1] - V_RANGE[0]) + V_RANGE[0]
         mask = (u + v).abs() > 0.1
+        u, v = u[mask], v[mask]
+        mask = u.abs() > NUM_OFFSET
+        u, v = u[mask], v[mask]
+        mask = v.abs() > NUM_OFFSET
         u, v = u[mask], v[mask]
         
         # Sample boundary points
@@ -155,7 +170,7 @@ def find_nn_solution(net):
         print("Warning: No zero crossing found on u=0 line")
         return None
 
-def plot_results(net):
+def plot_results(net, name):
     """Generate publication-quality plot of results"""
     # Create evaluation grid
     u = np.linspace(U_RANGE[0], U_RANGE[1], RESOLUTION)
@@ -204,7 +219,7 @@ def plot_results(net):
         for j in range(0, U.shape[1], skip):
             ax.quiver(U[i,j], V[i,j], U_norm[i,j], V_norm[i,j],
                      color=colors[i,j], scale=25, width=0.003,
-                     alpha=0.7, pivot='middle')
+                     alpha=0.7, pivot='tail')
     
     # Plot zero level set
     ax.contour(U, V, F, levels=[0], colors='k', linestyles=':', linewidths=1.5)
@@ -212,19 +227,19 @@ def plot_results(net):
     # Reference elements
     ax.axvline(0, color='k', linestyle='--', linewidth=1, label='u=0 (k=0)')
     ax.axhline(0.15, color='k', linestyle='-.', linewidth=1, label='correct result (v=0.15)')
-    ax.scatter(u0, v0, s=200, marker='*', color='gold', edgecolor='k', label='NGFP')
+    ax.scatter(u0, v0, s=200, marker='*', color='k', edgecolor='k', label='NGFP')
     
     # Plot neural network solution if found
     if v_nn is not None:
         ax.scatter(0, v_nn, s=100, marker='o', color='r', 
-                  label=f'neural network (v={v_nn:.3f})')
+                  label=f'PINN result (v={v_nn:.3f})')
     
     # Formatting
     ax.set_xlim(U_RANGE)
     ax.set_ylim(V_RANGE)
     ax.set_xlabel('u')
     ax.set_ylabel('v')
-    ax.set_title('UV-Critical Surface Heightmap')
+    ax.set_title('UV-critical surface heightmap')
     
     # Custom legend
     z0_proxy = Line2D([0], [0], color='k', linestyle=':', linewidth=1.5)
@@ -235,7 +250,7 @@ def plot_results(net):
     
     plt.grid(True, linestyle=':', alpha=0.3)
     plt.tight_layout()
-    plt.savefig('uv_critical_surface.png', dpi=300, bbox_inches='tight')
+    plt.savefig(name+'.png', dpi=300, bbox_inches='tight')
     plt.show()
 
 """
