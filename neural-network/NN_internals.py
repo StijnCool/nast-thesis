@@ -7,14 +7,14 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.colors import TwoSlopeNorm
 
 """
-MAIN CONFIGURATION PARAMETERS (TWEAK THESE)
+MAIN CONFIGURATION PARAMETERS
 """
 # Domain parameters
 U_RANGE = (-.2, .4)  # Range for u coordinate
 V_RANGE = (-.2, .4)   # Range for v coordinate
 RESOLUTION = 100        # Grid resolution for plotting
 
-# Fixed point coordinates (theory values)
+# Fixed point coordinates
 u0 = 343 / (288 * np.pi)
 v0 = -49 / (288 * np.pi)
 
@@ -177,7 +177,7 @@ def plot_results(net, name, u_vals, v_vals):
     v = np.linspace(V_RANGE[0], V_RANGE[1], RESOLUTION)
     U, V = np.meshgrid(u, v)
     
-    # Prepare grid points tensor (with correct bracket structure)
+    # Prepare grid points tensor
     points = torch.tensor(np.column_stack((U.ravel(), V.ravel()))).float()
     
     with torch.no_grad():
