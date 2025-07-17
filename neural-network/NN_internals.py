@@ -10,8 +10,8 @@ from matplotlib.colors import TwoSlopeNorm
 MAIN CONFIGURATION PARAMETERS (TWEAK THESE)
 """
 # Domain parameters
-U_RANGE = (-.1, .4)  # Range for u coordinate
-V_RANGE = (-.2, .3)   # Range for v coordinate
+U_RANGE = (-.2, .4)  # Range for u coordinate
+V_RANGE = (-.2, .4)   # Range for v coordinate
 RESOLUTION = 100        # Grid resolution for plotting
 
 # Fixed point coordinates (theory values)
@@ -19,11 +19,11 @@ u0 = 343 / (288 * np.pi)
 v0 = -49 / (288 * np.pi)
 
 # Linear regime boundary condition parameters
-BC_RADIUS = 10**-2        # Radius around fixed point where linear BC is enforced
-BC_WEIGHT = 10**-4         # Weight for boundary condition loss term
+BC_RADIUS = 10**-1        # Radius around fixed point where linear BC is enforced
+BC_WEIGHT = 0.9     # Weight for boundary condition loss term
 
 # DOF limiting parameters
-DOF_WEIGHT = 0
+DOF_WEIGHT = 10**-8
 
 # Neural network architecture
 HIDDEN_LAYERS = [50, 100, 100, 50]  # Neurons per hidden layer
@@ -34,7 +34,7 @@ LEARNING_RATE = 1e-4
 # BATCH_SIZE = 100
 
 # Numerical offset to avoid singularities and zeros
-NUM_OFFSET = 1e-10
+NUM_OFFSET = 1e-6
 
 """
 NEURAL NETWORK DEFINITION
@@ -77,10 +77,10 @@ def beta_v(u, v):
 
 def F_star(u, v):
     """Linearized solution around fixed point (boundary condition)"""
-    sqrt_43 = torch.sqrt(torch.tensor(43.0))
-    term1 = -(172 - 137 * sqrt_43) * u
-    term2 = (44 * sqrt_43 + 215) * v
-    term3 = -49 * (305 * sqrt_43 - 473) / (96 * torch.pi)
+    sqrt43 = torch.sqrt(torch.tensor(43.0))
+    term1 = (-1/82) * torch.sqrt(27 - 4*sqrt43) * (27 + 4*sqrt43) * u
+    term2 = (-1/82) * torch.sqrt(27 - 4*sqrt43) * (44 + 5*sqrt43) * v
+    term3 = (49 * torch.sqrt((1/82)*(422 + 61*sqrt43))) / (288 * torch.pi)
     return term1 + term2 + term3
 
 """
@@ -170,7 +170,7 @@ def find_nn_solution(net):
         print("Warning: No zero crossing found on u=0 line")
         return None
 
-def plot_results(net, name):
+def plot_results(net, name, u_vals, v_vals):
     """Generate publication-quality plot of results"""
     # Create evaluation grid
     u = np.linspace(U_RANGE[0], U_RANGE[1], RESOLUTION)
@@ -217,7 +217,7 @@ def plot_results(net, name):
     skip = 5
     for i in range(0, U.shape[0], skip):
         for j in range(0, U.shape[1], skip):
-            ax.quiver(U[i,j], V[i,j], U_norm[i,j], V_norm[i,j],
+            ax.quiver(U[i,j], V[i,j], -2*U_norm[i,j]/3, -2*V_norm[i,j]/3,
                      color=colors[i,j], scale=25, width=0.003,
                      alpha=0.7, pivot='tail')
     
@@ -233,6 +233,8 @@ def plot_results(net, name):
     if v_nn is not None:
         ax.scatter(0, v_nn, s=100, marker='o', color='r', 
                   label=f'PINN result (v={v_nn:.3f})')
+        
+    plt.plot(u_vals, v_vals, 'r-', linewidth=2, label='UV-critical surface (shooting method)')
     
     # Formatting
     ax.set_xlim(U_RANGE)
